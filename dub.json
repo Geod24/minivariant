@@ -1,0 +1,10 @@
+{
+	"name": "minivariant",
+    "targetType": "library",
+	"authors": [
+		"Mathias 'Geod24' Lang"
+	],
+	"description": "A minimal D library to expose a minimalistic tagged union",
+	"copyright": "Copyright © 2018, Mathias 'Geod24' Lang",
+	"license": "MIT"
+}
