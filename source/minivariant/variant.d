@@ -32,7 +32,7 @@
 module minivariant.variant;
 
 import std.meta : staticIndexOf;
-import std.traits : isAssignable;
+import std.traits : isAssignable, Select;
 
 
 /// Ditto
@@ -41,9 +41,15 @@ public struct Variant (T...)
     /// Allowed types
     public alias Types = T;
 
+    /// Keep a low overhead w.r.t the index
+    public alias IndexType =
+        Select!(T.length < ubyte.max, ubyte,
+                Select!(T.length < ushort.max, ushort,
+                        Select!(T.length < uint.max, uint, size_t)));
+
     private union Union { Types data; }
     private Union _data;
-    private size_t index;
+    private IndexType index;
 
     /// isAssignable has a default value so we cannot partially instantiate it
     private alias Assignable (X, Y) = isAssignable!(Y, X);
@@ -370,4 +376,9 @@ private template ForeachInst (alias Pred, string sym, Args...)
         mixin ForeachInst!(Pred, sym, Args[7 .. $]) Unrolled;
         mixin("alias " ~ sym ~ " = Unrolled." ~ sym ~ ";");
     }
+}
+
+unittest
+{
+    static assert(is(typeof(Variant!(ubyte, ulong, Object).index) == ubyte));
 }
