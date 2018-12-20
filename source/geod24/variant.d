@@ -2,9 +2,7 @@
 
     Minimalistic variant implementation  to work around `std.variant`'s quirks
 
-    After 2 minutes of `std.variant`, it proved not useful for AltereD's needs,
-    as we had the following code:
-
+    The following code does not work with `std.variant`:
     ---
     alias ValueT = Variant!(byte, ubyte, short, ushort, int, uint, long, ulong);
     public void someCtor (ValueT value) {}
@@ -18,10 +16,10 @@
     // uint, long, ulong)"
     ---
 
-    All we need is a union and static dispatch.
-    This follows AltereD's approach to metaprogramming, where as much work
-    is left to the compiler as possible, to avoid complicated and costly
-    reimplementation of type semantics.
+    This is because `std.variangt` design is using a fundamuntally different
+    approach: allow to use any type (through typeinfo), then build on that,
+    while this module does not build the capability to use any type,
+    and instead relies on the type system to do most of the job.
 
     Copyright: Copyright (c) 2016-2018 Mathias Lang. All rights reserved
 
@@ -29,7 +27,7 @@
 
 *******************************************************************************/
 
-module minivariant.variant;
+module geod24.variant;
 
 import std.meta : staticIndexOf;
 import std.traits : isAssignable, Select;
