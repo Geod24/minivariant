@@ -16,7 +16,7 @@
     // uint, long, ulong)"
     ---
 
-    This is because `std.variangt` design is using a fundamuntally different
+    This is because `std.variangt` design is using a fundamentally different
     approach: allow to use any type (through typeinfo), then build on that,
     while this module does not build the capability to use any type,
     and instead relies on the type system to do most of the job.
@@ -54,7 +54,8 @@ public struct Variant (T...)
     /// Evaluates to `true` if a type can be stored in this variable
     public alias IsAllowed(X) = anySatisfy!(Assignable!(X), Types);
 
-    /// Makes code simpler
+    /// A `Variant` should always be initialized explicitly,
+    /// even if only with a dummy value
     @disable this();
 
     /// As we cannot mix constructors in, this just forwards to the correct
@@ -84,7 +85,7 @@ public struct Variant (T...)
     /// Returns:
     ///    A pointer to a value of type `TestedT`,
     ///    `null` if it's not the active type
-    public TestedT* peek (TestedT) ()
+    public inout(TestedT)* peek (TestedT) () inout
     {
         // Workaround for 'statement is not reachable'
         bool hack;
@@ -300,19 +301,19 @@ public class ValueAsString
 
     public static string opCall (T) (ref T value)
     {
-        return format("%s", value);
+        return format("%s %s", T.stringof, value);
     }
 }
 
 ///
-@safe pure unittest
+@safe unittest
 {
     auto variant = Variant!(byte, char, string, bool)(byte(42));
-    assert(variant.visit!ValueAsString == "42");
+    assert(variant.visit!ValueAsString == "byte 42");
     variant = true;
-    assert(variant.visit!ValueAsString == "true");
+    assert(variant.visit!ValueAsString == "bool true");
     variant = "Hello World";
-    assert(variant.visit!ValueAsString == "Hello World");
+    assert(variant.visit!ValueAsString == "string Hello World");
 }
 
 /*******************************************************************************
