@@ -58,17 +58,6 @@ public struct Variant (T...)
     /// even if only with a dummy value
     @disable this();
 
-    /// As we cannot mix constructors in, this just forwards to the correct
-    /// overload or errors out
-    public this (T) (T value)
-    {
-        static if (is(typeof(this.constructor(value))))
-            this.constructor(value);
-        else
-            static assert(0, "Cannot instantiate a " ~ typeof(this).stringof
-                          ~ " from a " ~ T.stringof);
-    }
-
     /// Returns:
     ///     `true` if type `TestedT` is currently the active type.
     public bool isType (TestedT) () const
@@ -100,12 +89,28 @@ public struct Variant (T...)
         return null;
     }
 
-    /// Instead of 'patching' the type as `std.variant` does,
-    /// we generate different overloads to take advantage of the compiler's
-    /// resolution mecanism
-    mixin ForeachInst!(GenCtor, "constructor", Types);
-    /// Ditto
-    mixin ForeachInst!(GenOpAssign, "opAssign", Types);
+    // Instead of 'patching' the type as `std.variant` does,
+    // we generate different overloads to take advantage of the compiler's
+    // resolution mecanism
+    static foreach (T; Types) {
+        /// Construct an instance
+        public this (T v)
+        {
+            immutable idx = staticIndexOf!(T, Types);
+            this.index = idx;
+            this._data.tupleof[idx] = v;
+        }
+
+        /// Change the content of an instance
+        public ref typeof(this) opAssign (T v)
+        {
+            immutable idx = staticIndexOf!(T, Types);
+            this.index = idx;
+            // TODO: Destruct the previous instance ?
+            this._data.tupleof[idx] = v;
+            return this;
+        }
+    }
 }
 
 /// Pedestrian usage
@@ -267,33 +272,6 @@ version (unittest)
     variant.visit!HandlerC;
 }
 
-/// Predicate passed to ForeachInst to generate the constructor method
-/// We cannot cleanly merge ctor overload set, so we have a template ctor that
-/// will forward to this method
-private mixin template GenCtor (T)
-{
-    private void constructor (T v)
-    {
-        immutable idx = staticIndexOf!(T, Types);
-        this.index = idx;
-        this._data.tupleof[idx] = v;
-    }
-}
-
-/// Predicate passed to ForeachInst to generate opAssign
-private mixin template GenOpAssign (T)
-{
-    public ref typeof(this) opAssign (T v)
-    {
-        immutable idx = staticIndexOf!(T, Types);
-        this.index = idx;
-        // TODO: Destruct the previous instance ?
-        this._data.tupleof[idx] = v;
-        return this;
-    }
-}
-
-
 /// Utility class to get a string from a `Variant`
 public class ValueAsString
 {
@@ -314,67 +292,6 @@ public class ValueAsString
     assert(variant.visit!ValueAsString == "bool true");
     variant = "Hello World";
     assert(variant.visit!ValueAsString == "string Hello World");
-}
-
-/*******************************************************************************
-
-    Applies a template predicate to a list of arguments and merge the generated
-    overload set.
-
-    This template is explicitly designed to generate function definitions within
-    a scope and add them to an overload set.
-    The use of `sym` is necessary because overload sets from mixed-in templates
-    are not merged in the parent.
-
-    Params:
-        Pred = Predicate to generate one of more functions named `sym`
-        sym  = Name of the symbol to merge into an overload set
-        Args = Arguments to instantiate `Pred` with
-
-*******************************************************************************/
-
-private template ForeachInst (alias Pred, string sym, Args...)
-{
-    static if (Args.length >= 1)
-    {
-        mixin Pred!(Args[0]) A0;
-        mixin("alias " ~ sym ~ " = A0." ~ sym ~ ";");
-    }
-    static if (Args.length >= 2)
-    {
-        mixin Pred!(Args[1]) A1;
-        mixin("alias " ~ sym ~ " = A1." ~ sym ~ ";");
-    }
-    static if (Args.length >= 3)
-    {
-        mixin Pred!(Args[2]) A2;
-        mixin("alias " ~ sym ~ " = A2." ~ sym ~ ";");
-    }
-    static if (Args.length >= 4)
-    {
-        mixin Pred!(Args[3]) A3;
-        mixin("alias " ~ sym ~ " = A3." ~ sym ~ ";");
-    }
-    static if (Args.length >= 5)
-    {
-        mixin Pred!(Args[4]) A4;
-        mixin("alias " ~ sym ~ " = A4." ~ sym ~ ";");
-    }
-    static if (Args.length >= 6)
-    {
-        mixin Pred!(Args[5]) A5;
-        mixin("alias " ~ sym ~ " = A5." ~ sym ~ ";");
-    }
-    static if (Args.length >= 7)
-    {
-        mixin Pred!(Args[6]) A6;
-        mixin("alias " ~ sym ~ " = A6." ~ sym ~ ";");
-    }
-    static if (Args.length > 7)
-    {
-        mixin ForeachInst!(Pred, sym, Args[7 .. $]) Unrolled;
-        mixin("alias " ~ sym ~ " = Unrolled." ~ sym ~ ";");
-    }
 }
 
 unittest
